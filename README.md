@@ -1,2 +1,5 @@
-# umemofi
-Unified Multi-Exposure Multi-Object Fitting Interface
+# umemofi: the Unified Multi-Exposure Multi-Object Fitting Interface
+
+`umemofi` is an early-stage prototype of a successor to the [Multi-Epoch Data Structures](https://github.com/esheldon/meds) (MEDS) library for multi-exposure measurement in astronomy.  Its goal is to provide an abstraction layer that separates measurement algorithms from the high-level parallelization, data flow, and lower-level processing stages of a specific survey pipeline.  It will also provide data structures and utility code to make implementing a `umemofi` backend easier.
+
+We expect the first survey backend for `umemofi` to be implementd on top of the MEDS library itself, allowing an important subset of the `umemofi` interface to be used in production by the the [Dark Energy Survey](http://www.darkenergysurvey.org/) (DES) in much the same way MEDS is used there at present.  Eventually the DES backend may be enhanced to support more `umemofi` concepts, and the [Large Synoptic Survey Telescope](http://www.lsst.org) will provide its own backend(s), allowing the same algorithms to be run through both survey pipelines.
