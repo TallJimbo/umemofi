@@ -1,7 +1,8 @@
 
 
 class Deblender:
-    """Base class for algorithms that separate objects.
+    """Base class for algorithms that separate objects so they can be fit
+    independently.
 
     This could do something as simple as masking out neighbors, or as complex
     as simultaneously fitting everything and subtracting them.
@@ -10,16 +11,27 @@ class Deblender:
     def __init__(self, config):
         self.config = config
 
-    def processMultiExposure(self, data):
-        """Given a MultiExposureMultiObjectData, return a new one with objects
-        somehow separated.
+    def processStack(self, blend_obs_ref_stack):
+        """Remove neighbors from all ``ObsData`` referenced by a
+        ``BlendObsRefStack``.
 
-        May modify image/variance/mask pixels (e.g. subtract or mask
-        neighbors) and exposure_regions.
+        The given ``BlendObsRefStack`` should be updated in-place with
+        any ``Model``s created by the Deblender (it need not create any).
 
-        Must remove objects from ``neighbors`` dicts to reflect changes it has
-        made to the images, but it need not remove all neighbors (i.e. partial
-        deblenders are allowed).
+        Must return a ``BlendObsDataStack`` created by
+        ``blend_obs_ref_stack.load()``, with each ``ObsData`` then modified
+        in-place.
+
+        Deblenders may modify ``image`` and possibly ``weight`` pixel values to
+        subtract neighbors.  They may also indicate pixels that should not be
+        used in single-object fitting by setting bits in ``mask``.  Weight
+        pixels should not be set to zero to indicate this; donwstream
+        algorithms are responsible for doing this themselves (if desired) from
+        the mask.
+
+        Deblenders should also update the ``neighbors`` dict in each
+        ``ObsRef``, reflecting the objects that are no longer "present" in the
+        corresponding ``ObsData``.
         """
         raise NotImplementedError()
 
@@ -31,26 +43,33 @@ class SingleExposureDeblender(Deblender):
     def __init__(self, config):
         Deblender.__init__(self, config)
 
-    def processSingleExposure(self, data):
-        """Given a SingleExposureMultiObjectData, return a new one with objects
-        somehow separated.
-
-        May modify image/variance/mask pixels (e.g. subtract or mask
-        neighbors) and exposure_regions.
-
-        Must remove objects from ``neighbors`` dicts to reflect changes it has
-        made to the images, but it need not remove all neighbors (i.e. partial
-        deblenders are allowed).
-        """
+    def processStack(self, data):
+        # TODO: implement here.
         raise NotImplementedError()
 
-    def processMultiExposure(self, data):
-        # Reference implementation with a simple loop - but the point is that
-        # an external caller could parallelize this loop.
-        result = data.copy()
-        for exposure_id, exposure_data in data.by_exposure.items():
-            result[exposure_id] = self.processSingleExposure(exposure_data)
-        return result
+    def processExposure(self, blend_obs_ref):
+        """Remove neighbors from all ``ObsData`` referenced by a
+        ``BlendObsRef``.
+
+        The given ``BlendObsRef`` should be updated in-place with
+        any ``Model``s created by the Deblender (it need not create any).
+
+        Must return a ``BlendObsData`` created by
+        ``blend_obs_ref.load()``, with each ``ObsData`` then modified
+        in-place.
+
+        Deblenders may modify ``image`` and possibly ``weight`` pixel values to
+        subtract neighbors.  They may also indicate pixels that should not be
+        used in single-object fitting by setting bits in ``mask``.  Weight
+        pixels should not be set to zero to indicate this; donwstream
+        algorithms are responsible for doing this themselves (if desired) from
+        the mask.
+
+        Deblenders should also update the ``neighbors`` dict in each
+        ``ObsRef``, reflecting the objects that are no longer "present" in the
+        corresponding ``ObsData``.
+        """
+        raise NotImplementedError()
 
 
 class Fitter:
@@ -58,11 +77,12 @@ class Fitter:
     def __init__(self, config):
         self.config = config
 
-    def processMultiObject(self, data):
+    def processBlend(self, blend_obs_ref_stack):
         """Measure the properties of multiple objects simultaneously, from
-        a given MultiExposureMultiObjectData.
+        a given ``BlendObsRefStack``.
 
-        Return a dict of {object_id: SingleObjectAlgorithmData}.
+        Results should be returned by adding a ``Model`` to one or more of the
+        nested `models` dicts in the ``blend_obs_ref_stack``.
         """
         raise NotImplementedError()
 
@@ -72,18 +92,15 @@ class SingleObjectFitter(Fitter):
     def __init__(self, config):
         self.config = config
 
-    def processMultiObject(self, data):
-        # Reference implementation with a simple loop; harness may parellize
-        # this loop.
-        result = {}
-        for object_id, object_data in data.by_object.items():
-            result[object_id] = self.processSingleObject(object_data)
-        return result
+    def processBlend(self, blend_obs_ref_stack):
+        # TODO: implementhere
+        raise NotImplementedError()
 
-    def processSingleObject(self, data):
-        """Measure the properties of multiple objects simultaneously, from
-        a given MultiExposureSingleObjectData.
+    def processObject(self, obs_ref_stack):
+        """Measure the properties of a single object, from a given
+        ``ObsRefStack``.
 
-        Return a single SingleObjectAlgorithmData.
+        Results should be returned by adding a ``Model`` to one or more of the
+        nested `models` dicts in the ``blend_obs_ref_stack``.
         """
         raise NotImplementedError()
